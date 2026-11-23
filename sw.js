@@ -1,5 +1,5 @@
 // 離線快取：程式本體先用快取，字型第一次上線時存下來
-const VERSION = "mbti-v2";
+const VERSION = "mbti-v3";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 self.addEventListener("install", e => {
@@ -16,8 +16,8 @@ self.addEventListener("fetch", e => {
   const isFont = url.host === "fonts.googleapis.com" || url.host === "fonts.gstatic.com";
   if (url.origin !== location.origin && !isFont) return;
   if (req.mode === "navigate") {
-    // 頁面：先試網路拿最新版，失敗再用快取
-    e.respondWith(fetch(req).then(r => { const cp = r.clone(); caches.open(VERSION).then(c => c.put("./index.html", cp)); return r; })
+    // 頁面：先試網路拿最新版（跳過瀏覽器的 10 分鐘快取），失敗再用快取
+    e.respondWith(fetch(req, { cache: "no-cache" }).then(r => { const cp = r.clone(); caches.open(VERSION).then(c => c.put("./index.html", cp)); return r; })
       .catch(() => caches.match("./index.html")));
     return;
   }
