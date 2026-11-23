@@ -1,5 +1,5 @@
 // 離線快取：程式本體先用快取，字型第一次上線時存下來
-const VERSION = "mbti-v1";
+const VERSION = "mbti-v2";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 self.addEventListener("install", e => {
