@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0B2545">
+<meta name="description" content="選擇 MBTI 類型，產出功能堆疊、壓力模式、成長方向、相處建議與能力雷達圖。">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MBTI 報告">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>MBTI 功能分析報告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@400;700;900&family=LXGW+WenKai+TC:wght@400;700&family=Huninn&family=Chiron+Sung+HK:wght@400;700&family=Iansui&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Cinzel:wght@700&family=Bebas+Neue&family=Syne:wght@800&family=Cormorant+Garamond:wght@700&family=Caveat:wght@700&family=Playfair+Display:wght@800&family=Righteous&family=IBM+Plex+Mono:wght@600&family=Nunito:wght@800&family=Oswald:wght@700&family=Fredoka:wght@700&family=Space+Mono:wght@700&family=Baloo+2:wght@800&display=swap">
+<style>
+/* Layout: input console + character gallery on top, then a single-column report.
+   Every type has its own character theme; JS rewrites these tokens when the type changes.
+   Function families keep one hue everywhere: T blue, N violet, S teal, F amber. */
+:root{
+  --bg:#0B2545; --paper:#0F2E55; --raise:#13386A; --ink:#D8E6F5; --head:#FFFFFF; --muted:#8FB0D3; --line:#2A5285;
+  --accent:#7FE3FF; --accent-ink:#0B2545;
+  --t:#8AAEFF; --t-soft:#1B2848; --n:#CDA6FF; --n-soft:#2A2044; --s:#5AD8C8; --s-soft:#13332F; --f:#F4B76A; --f-soft:#3A2B16;
+  --warn:#FF9C9C; --warn-soft:#3B1E24;
+  --display:"Noto Sans TC","Microsoft JhengHei",sans-serif;
+  --body:"Noto Sans TC","Microsoft JhengHei","PingFang TC",system-ui,sans-serif;
+  --code:"JetBrains Mono",ui-monospace,monospace;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  --r:4px; --tilt:0deg;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+body{background-color:var(--bg);background-attachment:fixed;color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.8;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+@media (prefers-reduced-motion:no-preference){
+  body{transition:background-color .4s ease,color .4s ease}
+  html{scroll-behavior:smooth}
+}
+main{max-width:780px;margin:0 auto}
+header.top{padding-block:44px 20px}
+.eyebrow{font-size:13px;letter-spacing:.14em;color:var(--accent);font-weight:700;margin:0}
+h1{font-family:var(--display);font-weight:900;color:var(--head);font-size:clamp(32px,5.5vw,48px);letter-spacing:.02em;line-height:1.25;margin:8px 0 12px;text-wrap:balance}
+.lede{color:var(--muted);margin:0}
+h2{font-family:var(--display);font-weight:900;color:var(--head);font-size:28px;letter-spacing:.02em;line-height:1.35;margin:0 0 10px;padding-bottom:10px;border-bottom:2px solid var(--line);display:flex;gap:14px;align-items:baseline;text-wrap:balance}
+h2 .no{font-family:var(--code);font-size:17px;color:var(--accent)}
+h3{font-family:var(--display);font-size:20px;font-weight:700;color:var(--head);margin:30px 0 10px;line-height:1.5;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+h3 small{font-family:var(--body);font-weight:500;color:var(--muted);font-size:14px}
+section{padding-top:52px}
+.sub{color:var(--muted);margin:0 0 18px}
+p{margin:0 0 14px} ul,ol{margin:0 0 14px;padding-left:1.3em} li{margin-bottom:4px}
+strong{color:var(--head)}
+.note{font-size:13px;color:var(--muted)}
+code{font-family:var(--mono)}
+
+.fn{font-family:var(--mono);font-weight:700;font-size:.9em;padding:1px 7px;border-radius:5px;white-space:nowrap}
+.fn.T{color:var(--t);background:var(--t-soft)} .fn.N{color:var(--n);background:var(--n-soft)}
+.fn.S{color:var(--s);background:var(--s-soft)} .fn.F{color:var(--f);background:var(--f-soft)}
+
+/* console */
+.console{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:20px;display:grid;gap:16px}
+.console .lbl{font-size:13px;color:var(--muted);font-weight:700;letter-spacing:.06em;margin:0 0 6px}
+.pick{display:flex;flex-wrap:wrap;gap:10px}
+.pair{display:flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.pair button{font-family:var(--mono);font-weight:700;font-size:18px;border:none;background:transparent;color:var(--muted);padding:9px 18px;cursor:pointer}
+.pair button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.pair button:focus-visible,.toggle input:focus-visible,input[type=range]:focus-visible,.gtile:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.toggle{display:flex;gap:10px;align-items:center;font-size:15px;cursor:pointer}
+.toggle input{width:18px;height:18px;accent-color:var(--accent)}
+.sliders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px}
+@media (max-width:560px){.sliders{grid-template-columns:minmax(0,1fr)}}
+.sl{min-width:0}
+.sl label{display:flex;justify-content:space-between;font-size:14px;color:var(--muted)}
+.sl label b{font-family:var(--mono);color:var(--head);font-variant-numeric:tabular-nums}
+.sl input{width:100%;accent-color:var(--accent)}
+
+/* gallery */
+details.gal{margin-top:4px}
+details.gal summary{cursor:pointer;font-size:14px;color:var(--muted);font-weight:700}
+.gallery{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+@media (max-width:620px){.gallery{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.gtile{display:flex;gap:8px;align-items:center;border-radius:8px;padding:8px;cursor:pointer;text-align:left;border:2px solid transparent;font:inherit;min-width:0}
+.gtile svg{flex:none;width:36px;height:36px}
+.gtile span{display:block;line-height:1.3;min-width:0}
+.gtile .gc{font-family:var(--mono);font-weight:700;font-size:13px}
+.gtile .gn{font-size:12px;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gtile[aria-pressed="true"]{border-color:var(--accent)}
+
+/* persona */
+.persona{margin-top:28px;padding:24px;background:var(--raise);border-radius:var(--r);display:grid;grid-template-columns:132px minmax(0,1fr);gap:22px;align-items:center}
+@media (max-width:560px){.persona{grid-template-columns:minmax(0,1fr);justify-items:start}}
+.persona svg.emb{width:132px;height:132px}
+.persona .role-name{font-family:var(--display);font-weight:900;font-size:30px;color:var(--head);line-height:1.3;margin:0}
+.persona .tag{font-family:var(--display);font-size:17px;color:var(--accent);margin:2px 0 10px}
+.persona .codeline{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.persona .code{font-family:var(--code);font-size:44px;font-weight:700;color:var(--head);line-height:1;letter-spacing:.04em}
+.persona .stk{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:16px}
+.persona .stk .sep{color:var(--muted)}
+.persona .why{margin:0;font-size:15px;color:var(--ink)}
+.persona .why b{color:var(--head)}
+
+/* stack bars */
+.stack{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin:0 0 10px;display:grid;gap:12px}
+.row{display:grid;grid-template-columns:70px minmax(0,1fr);gap:14px;align-items:center}
+.row .pos{font-size:13px;color:var(--muted);line-height:1.3}
+.row .pos b{display:block;color:var(--head);font-size:15px}
+.bar{height:42px;border-radius:calc(var(--r) * .7);display:flex;align-items:center;gap:10px;padding:0 12px;font-size:14px;min-width:0;overflow:hidden;white-space:nowrap}
+.bar .c{font-family:var(--mono);font-weight:700;font-size:17px}
+.bar.T{background:var(--t-soft);color:var(--t)} .bar.N{background:var(--n-soft);color:var(--n)}
+.bar.S{background:var(--s-soft);color:var(--s)} .bar.F{background:var(--f-soft);color:var(--f)}
+.bar .d{color:var(--ink);overflow:hidden;text-overflow:ellipsis}
+
+.roles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}
+@media (max-width:560px){.roles{grid-template-columns:minmax(0,1fr)}}
+.role{border-radius:var(--r);padding:14px 16px;min-width:0;transform:rotate(var(--tilt))}
+.role:nth-child(even){transform:rotate(calc(var(--tilt) * -1))}
+.role.T{background:var(--t-soft)} .role.N{background:var(--n-soft)} .role.S{background:var(--s-soft)} .role.F{background:var(--f-soft)}
+.role .k{font-size:13px;color:var(--muted)} .role .v{font-family:var(--display);font-size:17px;font-weight:700;color:var(--head);margin:2px 0 4px}
+.role p{margin:0;font-size:14.5px}
+
+.steps{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px 18px 40px;margin:0}
+.steps b{color:var(--head)}
+
+.deep{border-left:3px solid var(--line);padding-left:18px;margin:26px 0 0}
+.deep.T{border-color:var(--t)} .deep.N{border-color:var(--n)} .deep.S{border-color:var(--s)} .deep.F{border-color:var(--f)}
+.deep h3{margin-top:0}
+.deep .q{font-size:15px;color:var(--muted);margin:-4px 0 8px}
+
+.call{border-radius:var(--r);padding:14px 18px;margin:0 0 16px;background:var(--paper);border:1px solid var(--line)}
+.call.warn{background:var(--warn-soft);border-color:transparent}
+.call.warn .lbl{color:var(--warn)}
+.call .lbl{font-size:13px;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:0 0 4px}
+.call p:last-child,.call ul:last-child{margin-bottom:0}
+
+.loop{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin:0 0 16px;font-size:14px;color:var(--muted);text-align:center}
+.loop .node{border-radius:calc(var(--r) * .8);padding:10px 16px;font-weight:700;line-height:1.4}
+.loop .node .c{font-family:var(--mono);font-size:18px}
+.loop .arr{font-family:var(--mono);font-size:18px}
+
+.rel{display:grid;gap:12px;margin:0 0 16px}
+.relc{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;transform:rotate(calc(var(--tilt) * .5))}
+.relc:nth-child(even){transform:rotate(calc(var(--tilt) * -.5))}
+.relc .h{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
+.relc .h b{color:var(--head);font-size:16px;margin-right:6px}
+.tchip{font-family:var(--mono);font-weight:700;font-size:13px;padding:2px 9px;border-radius:99px;background:var(--raise);border:1px solid var(--line);color:var(--head);cursor:pointer}
+.tchip:hover,.tchip:focus-visible{border-color:var(--accent);outline:none}
+.relc p{margin:0;font-size:15px}
+
+.tbl{overflow-x:auto;margin:0 0 16px;border:1px solid var(--line);border-radius:var(--r);background:var(--paper)}
+table{border-collapse:collapse;width:100%;font-size:15px;line-height:1.6}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:13px;color:var(--muted);font-weight:500;background:var(--raise)}
+tr:last-child td{border-bottom:none}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--head);text-align:right}
+.lvl{font-size:13px;font-weight:700;padding:1px 9px;border-radius:99px;white-space:nowrap;border:1px solid var(--line)}
+.lvl.l1{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.lvl.l2{color:var(--head)} .lvl.l3,.lvl.l4,.lvl.l5{color:var(--muted)}
+.meter{height:8px;border-radius:4px;background:var(--raise);min-width:80px;overflow:hidden}
+.meter i{display:block;height:100%;border-radius:4px;background:var(--accent)}
+
+.charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:0 0 16px}
+@media (max-width:680px){.charts{grid-template-columns:minmax(0,1fr)}}
+.chart{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0}
+.chart h4{font-family:var(--display);margin:0;color:var(--head);font-size:16px}
+.chart .cap{margin:0 0 4px;font-size:13px;color:var(--muted)}
+.plot{position:relative}
+.plot svg{display:block;width:100%;height:auto}
+.tip{position:absolute;pointer-events:none;background:var(--raise);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--ink);white-space:nowrap;transform:translate(-50%,calc(-100% - 12px));box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.tip b{color:var(--head);font-family:var(--mono)}
+.hit{cursor:pointer;outline:none}
+
+.pref{display:grid;gap:14px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;margin:0 0 16px}
+.prow{display:grid;grid-template-columns:72px minmax(0,1fr) 72px;gap:12px;align-items:center;font-size:14px}
+.prow .a{text-align:right} .prow span.on{color:var(--head);font-weight:700}
+.ptrack{position:relative;height:10px;border-radius:5px;background:var(--raise)}
+.ptrack .mid{position:absolute;left:50%;top:-4px;bottom:-4px;width:1px;background:var(--muted)}
+.ptrack .fill{position:absolute;top:0;bottom:0;border-radius:5px;background:var(--accent)}
+footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+
+<main>
+<header class="top">
+  <p class="eyebrow">COGNITIVE FUNCTION REPORT</p>
+  <h1>MBTI 功能分析報告</h1>
+  <p class="lede">選你的四個字母，整頁會換成那一型的角色和風格，並產出功能堆疊、壓力模式、成長方向、相處建議和能力分布圖。</p>
+</header>
+
+<div class="console">
+  <div>
+    <p class="lbl">你的類型</p>
+    <div class="pick" id="pick">
+      <div class="pair" data-k="0"><button type="button" id="p-E" data-v="E">E</button><button type="button" id="p-I" data-v="I">I</button></div>
+      <div class="pair" data-k="1"><button type="button" id="p-S" data-v="S">S</button><button type="button" id="p-N" data-v="N">N</button></div>
+      <div class="pair" data-k="2"><button type="button" id="p-T" data-v="T">T</button><button type="button" id="p-F" data-v="F">F</button></div>
+      <div class="pair" data-k="3"><button type="button" id="p-J" data-v="J">J</button><button type="button" id="p-P" data-v="P">P</button></div>
+    </div>
+  </div>
+  <details class="gal" id="galWrap">
+    <summary>看 16 個角色一覽</summary>
+    <div class="gallery" id="gallery"></div>
+  </details>
+  <div>
+    <label class="toggle"><input type="checkbox" id="usePct"> 我有測驗的百分比結果（選填，會影響能力分布圖）</label>
+  </div>
+  <div class="sliders" id="sliders" hidden>
+    <div class="sl"><label for="s0"><span id="s0l">I 的偏好強度</span><b id="s0v">65%</b></label><input type="range" id="s0" min="50" max="100" value="65"></div>
+    <div class="sl"><label for="s1"><span id="s1l">N 的偏好強度</span><b id="s1v">65%</b></label><input type="range" id="s1" min="50" max="100" value="65"></div>
+    <div class="sl"><label for="s2"><span id="s2l">T 的偏好強度</span><b id="s2v">65%</b></label><input type="range" id="s2" min="50" max="100" value="65"></div>
+    <div class="sl"><label for="s3"><span id="s3l">P 的偏好強度</span><b id="s3v">65%</b></label><input type="range" id="s3" min="50" max="100" value="65"></div>
+  </div>
+</div>
+
+<div class="persona" id="persona"></div>
+
+<section>
+  <h2><span class="no">01</span>你的功能堆疊</h2>
+  <p class="sub">你最常用的四個功能，由強到弱。長條長度只是示意順序。</p>
+  <div class="stack" id="stack"></div>
+  <h3>把它想成一間公司</h3>
+  <div class="roles" id="roles"></div>
+</section>
+
+<section>
+  <h2><span class="no">02</span>推導過程</h2>
+  <p class="sub">J/P 決定哪個功能向外，E/I 決定向外的那個是主導還是輔助。</p>
+  <ol class="steps" id="steps"></ol>
+</section>
+
+<section>
+  <h2><span class="no">03</span>四個功能逐一解析</h2>
+  <p class="sub">同一個功能放在不同位置，表現會很不一樣。</p>
+  <div id="funcs"></div>
+</section>
+
+<section>
+  <h2><span class="no">04</span>壓力下的模式</h2>
+  <div id="loop"></div>
+</section>
+
+<section>
+  <h2><span class="no">05</span>成長方向</h2>
+  <p class="sub">一般的說法是先把輔助功能用好，再慢慢跟劣勢功能和解。</p>
+  <div id="grow"></div>
+</section>
+
+<section>
+  <h2><span class="no">06</span>跟其他類型相處</h2>
+  <p class="sub">用功能重疊程度來看，比只看字母差幾個準確。點類型可以切換過去看。</p>
+  <div class="rel" id="rel"></div>
+</section>
+
+<section>
+  <h2><span class="no">07</span>能力分布</h2>
+  <p class="sub">把堆疊位置換算成分數畫成圖。移到點上可以看數值。</p>
+  <div class="charts">
+    <div class="chart"><h4>五項能力</h4><p class="cap">由八個功能的分數加權組合</p><div class="plot" id="penta"></div></div>
+    <div class="chart"><h4>八個功能</h4><p class="cap">含堆疊外的四個陰影功能</p><div class="plot" id="octa"></div></div>
+  </div>
+  <h3>分數明細</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>功能</th><th>位置</th><th>擅長的工作</th><th>分數</th><th style="width:28%">　</th></tr></thead>
+    <tbody id="ftable"></tbody>
+  </table></div>
+  <div class="tbl"><table>
+    <thead><tr><th>能力</th><th>計算方式</th><th>分數</th></tr></thead>
+    <tbody id="atable"></tbody>
+  </table></div>
+  <h3>四個向度的偏好</h3>
+  <div id="prefWrap"></div>
+  <div class="call">
+    <p class="lbl">分數怎麼來的</p>
+    <p>主導 90、輔助 75、第三 50、劣勢 30；堆疊外的四個陰影功能依序 26、22、18、14。如果有填百分比，偏好越接近 50%，強弱之間的差距就壓得越小。這是示意用的換算，不是心理測量。</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">08</span>使用這份報告的提醒</h2>
+  <ul>
+    <li>功能堆疊來自榮格，後來由 Myers-Briggs 母女和 John Beebe 等人整理成現在的模型。</li>
+    <li>官方 MBTI 測驗量的是四個二分向度，不直接測功能。這份報告是從四個字母依理論推出來的。</li>
+    <li>學界對 MBTI 的信度和效度評價偏保守，同一個人隔一段時間重測，結果可能不一樣。</li>
+    <li>16 個角色和視覺風格是這頁原創的詮釋，用來幫助記憶，不是官方設定。</li>
+  </ul>
+  <footer>分享時可以在網址後面加上類型，例如 <code>#intp</code>，打開就會直接顯示那一型。</footer>
+</section>
+</main>
+
+<script>
+(function(){
+/* ---------- function content ---------- */
+var F={
+ Ti:{n:"內傾思考",q:"這說得通嗎？",does:"在腦中建邏輯框架，把概念定義清楚、放到對的位置。",work:"架構分析、找邏輯漏洞",
+  dom:"你最自然的方式是先把事情想通。聽到含糊的說法會想追問定義，寧可自己推一遍，也不想直接相信權威的結論。想通本身就是一種滿足。",
+  aux:"Ti 幫主導功能做品質檢查。點子或觀察進來後，你會停下來問「這邏輯成立嗎」，所以你的想法通常比表面上嚴謹。",
+  tert:"放鬆時會冒出來，例如突然很想把某個東西的原理弄懂，或跟人辯一個細節。不太穩，有時會變成挑剔或鑽牛角尖。",
+  inf:"平常不太在意邏輯細節，壓力大時卻會突然變得尖銳、愛挑毛病，或陷入「到底哪裡出錯」的反覆分析，又很難得出結論。",
+  exit:"停下來，把狀況寫下來，一條一條想清楚",grow:"做決定前花五分鐘檢查邏輯，多問一句「為什麼這樣就會那樣」。"},
+ Te:{n:"外傾思考",q:"這有效嗎？",does:"用外部標準、數據和結果來決策，安排資源、建流程、推進進度。",work:"推進進度、排時程、做決策",
+  dom:"你習慣看目標、排步驟、把事情做完。效率低、沒有結論的討論最讓你煩。你常是那個把模糊狀況整理成計畫的人。",
+  aux:"Te 把主導功能的想法落地。你不只想，還會規劃怎麼做、用什麼標準判斷有沒有成功。",
+  tert:"偶爾會冒出很強的效率欲，突然想把一切排好、列清單，但持續不久，或用在不太需要的地方。",
+  inf:"壓力大時會突然想掌控一切、急著要結果，或批評別人沒效率；也可能覺得自己什麼都沒完成。",
+  exit:"列一個具體的待辦，先完成其中一件小事",grow:"把想法變成一個有期限的小目標，接受「夠好就交」。"},
+ Fi:{n:"內傾情感",q:"這符合我嗎？",does:"用內在的價值觀判斷對錯好壞，在意真誠和一致。",work:"價值判斷、品質把關、守住原則",
+  dom:"你心中有一套很清楚的價值觀，做事要對得起自己。你不一定會說出來，但碰到違背價值的事會很堅持。",
+  aux:"Fi 幫你判斷什麼值得做。你的選擇背後通常有很個人的理由，別人不一定看得出來。",
+  tert:"平常不常談感受，但在信任的人面前會露出很在意的價值觀。被碰到時，反應可能比別人預期的強烈。",
+  inf:"平常理性、看結果，壓力大時會突然覺得自己不被重視、被誤解，或陷入「我是不是很糟」的情緒，而且很難說出口。",
+  exit:"安靜一下，問自己這件事裡你真正在意的是什麼",grow:"定期問自己「我真正想要的是什麼」，允許自己有不需要理由的喜好。"},
+ Fe:{n:"外傾情感",q:"大家感覺如何？",does:"感受群體氣氛，照顧別人的情緒，維持和諧和連結。",work:"協調溝通、說服推廣、帶動團隊",
+  dom:"你很自然地讀到現場的氣氛，知道誰不舒服、該說什麼。讓大家好過對你很重要，有時會因此忽略自己的需要。",
+  aux:"Fe 讓你把想法用別人聽得進去的方式說出來，也讓你在團體裡常扮演協調的角色。",
+  tert:"開心時很會炒熱氣氛、照顧人，但不太穩；有時太在意別人的反應，有時又完全不管。",
+  inf:"平常不太表達情緒、不太管社交禮節。累積太多時，可能突然很在意別人的評價、覺得沒人理解自己，或情緒爆發。",
+  exit:"找一個信任的人聊聊，聊什麼都好",grow:"小劑量表達感受，例如「這件事讓我有點煩」；把人的感受當成決策裡的一個變數；對信任的人說謝謝。"},
+ Ne:{n:"外傾直覺",q:"還有什麼可能？",does:"從外界抓連結和可能性，發散聯想，一個點子冒出十個。",work:"發想、找新方向、跨領域連結",
+  dom:"你的腦子一直在找新的可能：「如果反過來呢」「這跟那個有關」。重複和例行公事最消耗你，新點子讓你充電。",
+  aux:"Ne 幫主導功能帶進新材料，也把你想好的東西往外延伸，讓你的想法不會只在原地打轉。",
+  tert:"放鬆時很愛腦力激盪、玩點子，但不太穩，可能開了很多頭卻沒有收。",
+  inf:"平常務實、按部就班，壓力大時會突然冒出一堆最壞的可能，「萬一……」想個不停，或衝動地想全部打掉重來。",
+  exit:"換個環境、接觸新東西，或開一個沒壓力的小專案",grow:"遇到問題時刻意列出三種其他可能，偶爾試一件沒做過的小事。"},
+ Ni:{n:"內傾直覺",q:"最後會往哪裡走？",does:"從大量線索收斂出一個核心洞見或長期方向。",work:"策略方向、預判趨勢",
+  dom:"你常常「就是知道」事情會怎麼發展，但不一定說得出過程。你會被一個長期願景牽著走，對瑣碎細節比較沒耐心。",
+  aux:"Ni 幫主導功能找方向。你的行動或判斷背後，通常有一條長期的主線。",
+  tert:"偶爾會冒出很強的直覺或預感，覺得「這件事有更深的意義」，但不太確定能不能信。",
+  inf:"平常活在當下、看具體事實，壓力大時會突然對未來很悲觀，有不祥的預感，或過度解讀別人的意圖。",
+  exit:"獨處一下，想想長期來看你要往哪裡走",grow:"每個月花一點時間想長期方向，行動前想想三個月後的後果。"},
+ Se:{n:"外傾實感",q:"現在發生什麼？",does:"活在當下，對眼前的環境、感官和機會反應很快。",work:"臨場應變、執行、危機處理",
+  dom:"你對現場很敏銳，反應快，喜歡動手和體驗。比起計畫，你更相信做了再說。",
+  aux:"Se 讓主導功能接上現實。你能看到眼前的具體狀況，並立刻採取行動。",
+  tert:"放鬆時很享受美食、運動、刺激的體驗；有時也會一時興起做出衝動的決定。",
+  inf:"平常活在腦中，壓力大時會突然暴飲暴食、衝動消費、沉迷感官刺激，或對噪音、雜亂特別煩躁。",
+  exit:"出門動一動，做點具體、用到身體的事",grow:"規律運動或做點手作，練習專注在當下的感受。"},
+ Si:{n:"內傾實感",q:"以前怎麼樣？",does:"保存過去的經驗、習慣和身體感受，拿來和現在比對。",work:"收尾、文件、維運、穩定流程",
+  dom:"你重視穩定和可靠，做事有自己的方法和習慣。你記得很多細節，也很清楚「上次這樣做的結果」。",
+  aux:"Si 幫主導功能提供可靠的參考。你做決定時會參考過去的經驗和既有做法，讓結果比較穩。",
+  tert:"通常表現成一些固定的小習慣，像固定的食物、工具或喜歡的老作品。失衡時會跟主導功能一起往內縮。",
+  inf:"平常一直往前衝、追新東西，壓力大時會突然陷入細節，反覆回想過去，或過度擔心身體狀況。",
+  exit:"回到熟悉的作息，好好睡覺、好好吃飯",grow:"建立一些固定的作息，事情做完後寫下經驗和教訓。"}
+};
+
+/* ---------- 16 characters & themes ---------- */
+var FAM_DARK={t:"#8AAEFF",ts:"#1B2848",n:"#CDA6FF",ns:"#2A2044",s:"#5AD8C8",ss:"#13332F",f:"#F4B76A",fs:"#3A2B16",w:"#FF9C9C",ws:"#3B1E24"};
+var FAM_LIGHT={t:"#2F5FD0",ts:"#E4ECFB",n:"#7A45C2",ns:"#EFE6FA",s:"#13857A",ss:"#DFF3F0",f:"#B0600A",fs:"#FBEEDC",w:"#A43C3C",ws:"#F8E4E4"};
+var SANS='"Noto Sans TC","Microsoft JhengHei",sans-serif', SERIF='"Noto Serif TC","PMingLiU",serif';
+var T={
+ INTJ:{name:"棋局策士",tag:"我看的是十步之後。",why:"深夜的黑配一點金色，直角、大量留白、襯線標題。<b>Ni</b> 看得遠，<b>Te</b> 要精準，畫面只留下必要的東西。",
+  c:["#0D1117","#151B24","#1C2430","#D6DCE4","#F3E6C4","#8D97A6","#27303D","#D4AF5A","#0D1117"],dark:1,disp:SERIF,code:'"Cinzel",serif',r:4,motif:"chess",mc:"rgba(212,175,90,.05)"},
+ INTP:{name:"藍圖工程師",tag:"先讓我把原理想通。",why:"藍圖紙的格線加上等寬字。<b>Ti</b> 要結構清楚、定義精確，<b>Ne</b> 讓格線上隨時可以畫新的草稿。",
+  c:["#0B2545","#0F2E55","#13386A","#D8E6F5","#FFFFFF","#8FB0D3","#2A5285","#7FE3FF","#0B2545"],dark:1,disp:SANS,code:'"JetBrains Mono",monospace',r:2,motif:"grid",mc:"rgba(127,227,255,.09)"},
+ ENTJ:{name:"領航艦長",tag:"目標在那裡，出發。",why:"炭黑配指揮紅，粗體窄字、沒有圓角。<b>Te</b> 主導要的是一眼看出重點和方向，<b>Ni</b> 負責看準航線。",
+  c:["#16161A","#1F1F25","#2A2A32","#DADAE0","#FFFFFF","#9A9AA6","#34343E","#E5484D","#FFFFFF"],dark:1,disp:SANS,code:'"Bebas Neue",sans-serif',r:0,motif:"stripes",mc:"rgba(229,72,77,.06)"},
+ ENTP:{name:"點子發明家",tag:"如果反過來做呢？",why:"白板配便利貼，卡片微微歪斜，好像隨時有人要再貼一張上去。<b>Ne</b> 一直冒新點子，<b>Ti</b> 拿來拆解。",
+  c:["#F4F4EF","#FFFFFF","#FFE45C","#2B2620","#111111","#6B6253","#E2DFC9","#FF5A36","#FFFFFF"],dark:0,disp:'"Huninn",'+SANS,code:'"Syne",sans-serif',r:10,tilt:"0.8deg",motif:"dots",mc:"rgba(43,38,32,.13)"},
+ INFJ:{name:"月夜引路人",tag:"我感覺得到事情要往哪裡去。",why:"深靛藍的夜空和星點，柔和的明體標題。<b>Ni</b> 的直覺像夜裡看得到的遠方，<b>Fe</b> 讓一切保持溫柔。",
+  c:["#171634","#201F45","#2A2856","#DCD9F2","#FFFFFF","#A19CC9","#36346A","#C9B8FF","#171634"],dark:1,disp:'"Chiron Sung HK",'+SERIF,code:'"Cormorant Garamond",serif',r:18,motif:"stars",mc:"rgba(255,255,255,.55)"},
+ INFP:{name:"手帳詩人",tag:"這件事對我有意義嗎？",why:"淡紫色的手帳頁和有手寫感的楷體，圓角很大。<b>Fi</b> 重視真誠和個人感受，<b>Ne</b> 帶來想像。",
+  c:["#F3EEF8","#FFFFFF","#EADFF5","#3A3346","#2A2238","#7D728C","#DED2EC","#8A57BD","#FFFFFF"],dark:0,disp:'"LXGW WenKai TC",'+SERIF,body:'"LXGW WenKai TC",'+SANS,code:'"Caveat",cursive',r:20,motif:"blobs",mc:"rgba(155,107,201,.16)",mc2:"rgba(120,200,190,.16)"},
+ ENFJ:{name:"舞台領唱",tag:"來，我們一起。",why:"珊瑚玫瑰色的暖光，優雅的襯線標題。<b>Fe</b> 主導的人帶動氣氛，讓每個人都被看見；<b>Ni</b> 看見大家可以一起去的地方。",
+  c:["#FFF1EE","#FFFFFF","#FFE1DA","#3D2A2A","#2B1616","#8A6A66","#F2D2CB","#D23A52","#FFFFFF"],dark:0,disp:SERIF,code:'"Playfair Display",serif',r:16,motif:"glow",mc:"rgba(224,71,94,.16)"},
+ ENFP:{name:"火花收集者",tag:"每個人、每個點子都好有趣！",why:"彩色紙花點點、圓滾滾的字體、很大的圓角。<b>Ne</b> 的熱情加上 <b>Fi</b> 的真誠。",
+  c:["#F2FBFF","#FFFFFF","#E4F4FF","#263040","#141B2A","#66748A","#D3E6F2","#E8338C","#FFFFFF"],dark:0,disp:'"Huninn",'+SANS,code:'"Righteous",sans-serif',r:24,tilt:"0.6deg",motif:"confetti",mc:""},
+ ISTJ:{name:"檔案管理員",tag:"照規矩來，就不會出錯。",why:"帳簿的橫線、墨綠色、直角。<b>Si</b> 重視可靠的紀錄，<b>Te</b> 要求整齊有序。",
+  c:["#EEF1EC","#FBFCF9","#E3E8E0","#2A2F29","#1A1F19","#6A7268","#CFD6CB","#2F5D50","#FFFFFF"],dark:0,disp:SERIF,code:'"IBM Plex Mono",monospace',r:2,motif:"ledger",mc:"rgba(47,93,80,.10)"},
+ ISFJ:{name:"溫室園丁",tag:"你最近還好嗎？",why:"鼠尾草綠和圓潤的字體，像一間照顧得很好的溫室。<b>Si</b> 記得每個人的習慣，<b>Fe</b> 默默照顧大家。",
+  c:["#EEF5EF","#FFFFFF","#DDEDE0","#2E3A31","#1E2A21","#6C7D70","#CFE2D3","#3E8A5A","#FFFFFF"],dark:0,disp:'"Huninn",'+SANS,code:'"Nunito",sans-serif',r:18,motif:"blobs",mc:"rgba(78,154,106,.16)",mc2:"rgba(240,190,120,.14)"},
+ ESTJ:{name:"營運總監",tag:"流程跑起來，結果拿出來。",why:"白底配海軍藍，像一份正式的營運報表。<b>Te</b> 主導重視效率和秩序，<b>Si</b> 讓流程可以重複。",
+  c:["#F4F6F9","#FFFFFF","#E6EBF2","#1F2733","#0B1A33","#5F6B7C","#D3DAE4","#1D3F8A","#FFFFFF"],dark:0,disp:SANS,code:'"Oswald",sans-serif',r:4,motif:"topband",mc:"rgba(29,63,138,.9)"},
+ ESFJ:{name:"派對主人",tag:"大家都有吃飽嗎？",why:"粉色點點和圓潤的字型，像一場準備周到的聚會。<b>Fe</b> 主導讓每個人都覺得被歡迎，<b>Si</b> 記得每個細節。",
+  c:["#FFF4F7","#FFFFFF","#FFE3EB","#3B2A31","#2A1820","#8C6B78","#F3D3DE","#D44A78","#FFFFFF"],dark:0,disp:'"Huninn",'+SANS,code:'"Fredoka",sans-serif',r:20,motif:"dots",mc:"rgba(232,96,138,.20)"},
+ ISTP:{name:"機械技師",tag:"拆開來看就知道了。",why:"槍灰色金屬和警示橘條紋，等寬字。<b>Ti</b> 要懂原理，<b>Se</b> 要動手。",
+  c:["#1B1D1F","#232629","#2C3034","#D5D8DB","#FFFFFF","#969BA1","#383D42","#FF9F1C","#1B1D1F"],dark:1,disp:SANS,code:'"Space Mono",monospace',r:3,motif:"hazard",mc:"rgba(255,159,28,.045)"},
+ ISFP:{name:"調色畫家",tag:"美就在眼前這一刻。",why:"薄荷色的水彩暈染和手寫字。<b>Fi</b> 的感受透過 <b>Se</b> 的感官表達出來。",
+  c:["#EAF6F4","#FFFFFF","#D8EFEB","#2B3836","#1A2725","#667B77","#C9E3DE","#D0436B","#FFFFFF"],dark:0,disp:'"Iansui",'+SANS,code:'"Caveat",cursive',r:22,motif:"blobs",mc:"rgba(19,160,140,.16)",mc2:"rgba(226,85,122,.13)"},
+ ESTP:{name:"極限玩家",tag:"先上再說！",why:"紫黑底、桃紅和青色的速度線、粗窄字。<b>Se</b> 主導追求當下的刺激和速度，<b>Ti</b> 臨場算準角度。",
+  c:["#1A1028","#24173A","#2F1F4A","#E3DAF0","#FFFFFF","#A897C2","#3D2B5C","#FF3EA5","#1A1028"],dark:1,disp:SANS,code:'"Bebas Neue",sans-serif',r:6,motif:"speed",mc:"rgba(255,62,165,.07)",mc2:"rgba(62,220,255,.05)"},
+ ESFP:{name:"夏日 DJ",tag:"現在就是最好的時候！",why:"陽光黃和放射狀光芒、圓滾滾的字。<b>Se</b> 主導享受當下，<b>Fi</b> 讓快樂是真心的。",
+  c:["#FFF7DB","#FFFFFF","#FFE7A8","#3A2A12","#2A1A00","#8A6F3E","#F1D99A","#E85512","#FFFFFF"],dark:0,disp:'"Huninn",'+SANS,code:'"Baloo 2",sans-serif',r:22,motif:"sun",mc:"rgba(255,170,0,.10)"}
+};
+function motif(th){
+  var m=th.mc,m2=th.mc2||th.mc;
+  switch(th.motif){
+    case "chess":return ["conic-gradient("+m+" 25%,transparent 0 50%,"+m+" 0 75%,transparent 0)","80px 80px"];
+    case "grid":return ["linear-gradient("+m+" 1px,transparent 1px),linear-gradient(90deg,"+m+" 1px,transparent 1px),linear-gradient("+m+" 1px,transparent 1px),linear-gradient(90deg,"+m+" 1px,transparent 1px)","120px 120px,120px 120px,24px 24px,24px 24px"];
+    case "stripes":return ["repeating-linear-gradient(135deg,"+m+" 0 2px,transparent 2px 16px)","auto"];
+    case "dots":return ["radial-gradient("+m+" 1.6px,transparent 1.8px)","22px 22px"];
+    case "stars":return ["radial-gradient(circle at 85% 8%,rgba(201,184,255,.22),transparent 22%),radial-gradient(1px 1px at 20px 30px,"+m+",transparent),radial-gradient(1.5px 1.5px at 120px 80px,"+m+",transparent),radial-gradient(1px 1px at 170px 160px,"+m+",transparent),radial-gradient(1.2px 1.2px at 60px 190px,"+m+",transparent)","100% 100%,220px 220px,220px 220px,220px 220px,220px 220px"];
+    case "blobs":return ["radial-gradient(circle at 8% 12%,"+m+",transparent 34%),radial-gradient(circle at 95% 40%,"+m2+",transparent 30%),radial-gradient(circle at 20% 85%,"+m2+",transparent 30%),radial-gradient(circle at 85% 95%,"+m+",transparent 32%)","100% 100%"];
+    case "glow":return ["radial-gradient(ellipse at 50% -10%,"+m+",transparent 55%)","100% 100%"];
+    case "confetti":return ["radial-gradient(circle at 15px 20px,rgba(255,79,163,.30) 3px,transparent 3.5px),radial-gradient(circle at 70px 55px,rgba(80,170,255,.30) 3px,transparent 3.5px),radial-gradient(circle at 110px 15px,rgba(255,190,40,.38) 2.5px,transparent 3px),radial-gradient(circle at 40px 100px,rgba(60,200,150,.30) 3px,transparent 3.5px),radial-gradient(circle at 100px 110px,rgba(160,100,255,.30) 2.5px,transparent 3px)","130px 130px"];
+    case "ledger":return ["repeating-linear-gradient(0deg,"+m+" 0 1px,transparent 1px 32px),linear-gradient(90deg,transparent 56px,rgba(200,60,60,.12) 56px 57px,transparent 57px)","auto"];
+    case "topband":return ["linear-gradient("+m+" 0 6px,transparent 6px),repeating-linear-gradient(90deg,rgba(29,63,138,.04) 0 1px,transparent 1px 80px)","100% 100%,auto"];
+    case "hazard":return ["repeating-linear-gradient(45deg,"+m+" 0 14px,transparent 14px 28px)","auto"];
+    case "speed":return ["repeating-linear-gradient(115deg,"+m+" 0 2px,transparent 2px 46px),repeating-linear-gradient(115deg,transparent 0 20px,"+m2+" 20px 21px,transparent 21px 46px)","auto"];
+    case "sun":return ["repeating-conic-gradient(from 0deg at 50% -5%,"+m+" 0 6deg,transparent 6deg 14deg)","100% 100%"];
+  }
+  return ["none","auto"];
+}
+function applyTheme(t){
+  var th=T[t],c=th.c,fam=th.dark?FAM_DARK:FAM_LIGHT,r=document.documentElement.style;
+  var keys=["--bg","--paper","--raise","--ink","--head","--muted","--line","--accent","--accent-ink"];
+  keys.forEach(function(k,i){r.setProperty(k,c[i]);});
+  r.setProperty("--t",fam.t);r.setProperty("--t-soft",fam.ts);r.setProperty("--n",fam.n);r.setProperty("--n-soft",fam.ns);
+  r.setProperty("--s",fam.s);r.setProperty("--s-soft",fam.ss);r.setProperty("--f",fam.f);r.setProperty("--f-soft",fam.fs);
+  r.setProperty("--warn",fam.w);r.setProperty("--warn-soft",fam.ws);
+  r.setProperty("--display",th.disp);r.setProperty("--body",th.body||'"Noto Sans TC","Microsoft JhengHei","PingFang TC",system-ui,sans-serif');
+  r.setProperty("--code",th.code);r.setProperty("--r",th.r+"px");r.setProperty("--tilt",th.tilt||"0deg");
+  r.setProperty("color-scheme",th.dark?"dark":"light");
+  var tc=document.querySelector('meta[name="theme-color"]');if(tc)tc.setAttribute("content",c[0]);
+  try{localStorage.setItem("mbti-last",t);}catch(e){}
+  var mo=motif(th);document.body.style.backgroundImage=mo[0];document.body.style.backgroundSize=mo[1];
+}
+
+/* ---------- logic ---------- */
+var ROLE=[["主導","老闆","最後拍板的人"],["輔助","得力助手","幫老闆補上另一面"],["第三","實習生","會做事，但還不太穩"],["劣勢","很少上班的部門","平常不在，出事時才冒出來"]];
+var POS=["主導","輔助","第三","劣勢"];
+var opp={S:"N",N:"S",T:"F",F:"T"}, fam={S:"實感",N:"直覺",T:"思考",F:"情感"};
+function flip(f){return f[0]+(f[1]==="e"?"i":"e");}
+function chip(f){return '<span class="fn '+f[0]+'">'+f+'</span>';}
+function derive(t){
+  var ei=t[0],sn=t[1],tf=t[2],jp=t[3];
+  var ext=jp==="J"?tf:sn, other=jp==="J"?sn:tf, dom, aux;
+  if(ei==="E"){dom=ext+"e";aux=other+"i";}else{dom=other+"i";aux=ext+"e";}
+  var st=[dom,aux,opp[aux[0]]+dom[1],opp[dom[0]]+(dom[1]==="e"?"i":"e")];
+  return {ext:ext,other:other,stack:st,shadow:st.map(flip)};
+}
+var ALL=[];["E","I"].forEach(function(a){["S","N"].forEach(function(b){["T","F"].forEach(function(c){["J","P"].forEach(function(d){ALL.push(a+b+c+d);});});});});
+
+function shape(k,cx,cy,r,fill){
+  if(k==="T") return '<rect x="'+(cx-r)+'" y="'+(cy-r)+'" width="'+(2*r)+'" height="'+(2*r)+'" rx="'+(r*.18)+'" fill="'+fill+'"/>';
+  if(k==="S") return '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+fill+'"/>';
+  if(k==="N") return '<path d="M'+cx+' '+(cy-r*1.15)+'Q'+cx+' '+cy+' '+(cx+r*1.15)+' '+cy+'Q'+cx+' '+cy+' '+cx+' '+(cy+r*1.15)+'Q'+cx+' '+cy+' '+(cx-r*1.15)+' '+cy+'Q'+cx+' '+cy+' '+cx+' '+(cy-r*1.15)+'Z" fill="'+fill+'"/>';
+  return '<path d="M'+cx+' '+(cy+r)+'C'+(cx-r*1.4)+' '+(cy-r*.2)+' '+(cx-r*.55)+' '+(cy-r*1.3)+' '+cx+' '+(cy-r*.45)+'C'+(cx+r*.55)+' '+(cy-r*1.3)+' '+(cx+r*1.4)+' '+(cy-r*.2)+' '+cx+' '+(cy+r)+'Z" fill="'+fill+'"/>';
+}
+function emblem(t,cls){
+  var th=T[t],c=th.c,fm=th.dark?FAM_DARK:FAM_LIGHT,st=derive(t).stack;
+  function col(f){return fm[f[0].toLowerCase()];}
+  function at(deg,rad){var a=deg*Math.PI/180;return [60+Math.cos(a)*rad,60+Math.sin(a)*rad];}
+  var a=at(-45,42),b=at(140,42),d=at(205,42);
+  return '<svg class="'+(cls||"")+'" viewBox="0 0 120 120" aria-hidden="true">'+
+    '<circle cx="60" cy="60" r="57" fill="'+c[1]+'" stroke="'+c[6]+'" stroke-width="2"/>'+
+    '<circle cx="60" cy="60" r="42" fill="none" stroke="'+c[6]+'" stroke-width="1.5" stroke-dasharray="3 5"/>'+
+    shape(st[0][0],60,60,22,c[7])+shape(st[1][0],a[0],a[1],10,col(st[1]))+
+    '<circle cx="'+b[0]+'" cy="'+b[1]+'" r="5.5" fill="'+col(st[2])+'"/><circle cx="'+d[0]+'" cy="'+d[1]+'" r="3.5" fill="'+col(st[3])+'" opacity=".8"/></svg>';
+}
+
+var cur=["I","N","T","P"];
+var hh=(location.hash||"").replace("#","").toUpperCase();
+if(/^[EI][SN][TF][JP]$/.test(hh)) cur=hh.split("");
+else{try{var ls=localStorage.getItem("mbti-last");if(/^[EI][SN][TF][JP]$/.test(ls||""))cur=ls.split("");}catch(e){}}
+var usePct=document.getElementById("usePct"), sliders=document.getElementById("sliders");
+function $(id){return document.getElementById(id);}
+
+// gallery
+$("gallery").innerHTML=ALL.slice().sort().map(function(t){var c=T[t].c;
+  return '<button type="button" class="gtile" data-t="'+t+'" style="background:'+c[0]+';color:'+c[4]+'">'+emblem(t)+'<span><span class="gc">'+t+'</span><span class="gn">'+T[t].name+'</span></span></button>';}).join("");
+$("gallery").addEventListener("click",function(e){var b=e.target.closest(".gtile");if(b){cur=b.dataset.t.split("");render();}});
+
+function scores(d){
+  var base=[90,75,50,30],sh=[26,22,18,14],m={};
+  d.stack.forEach(function(f,i){m[f]=base[i];});d.shadow.forEach(function(f,i){m[f]=sh[i];});
+  if(usePct.checked){var c=0;for(var i=0;i<4;i++){c+=(+$("s"+i).value-50)/50;}c/=4;var k=.5+.5*c;
+    Object.keys(m).forEach(function(f){m[f]=Math.round(50+(m[f]-50)*k);});}
+  return m;
+}
+var ABIL=[{n:"邏輯分析",w:[["Ti",.65],["Te",.35]]},{n:"洞察發想",w:[["Ne",.6],["Ni",.4]]},{n:"執行推進",w:[["Te",.5],["Se",.5]]},{n:"人際共感",w:[["Fe",.6],["Fi",.4]]},{n:"穩定細節",w:[["Si",.75],["Te",.25]]}];
+
+function radar(el,axes,fs){
+  var W=400,H=380,cx=200,cy=192,R=122,n=axes.length;
+  function pt(i,v){var a=-Math.PI/2+i*2*Math.PI/n;return [cx+Math.cos(a)*R*v/100,cy+Math.sin(a)*R*v/100];}
+  var s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+axes.map(function(a){return a.label+' '+a.v;}).join('、')+'">';
+  [25,50,75,100].forEach(function(g){s+='<polygon points="'+axes.map(function(_,i){return pt(i,g).join(",");}).join(" ")+'" fill="none" stroke="var(--line)" stroke-width="1"/>';});
+  axes.forEach(function(_,i){var e=pt(i,100);s+='<line x1="'+cx+'" y1="'+cy+'" x2="'+e[0]+'" y2="'+e[1]+'" stroke="var(--line)" stroke-width="1"/>';});
+  [50,100].forEach(function(g){var p=pt(0,g);s+='<text x="'+(p[0]+5)+'" y="'+(p[1]+12)+'" font-size="11" fill="var(--muted)" font-family="JetBrains Mono,monospace">'+g+'</text>';});
+  s+='<polygon points="'+axes.map(function(a,i){return pt(i,a.v).join(",");}).join(" ")+'" fill="var(--accent)" fill-opacity=".22" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>';
+  axes.forEach(function(a,i){
+    var p=pt(i,a.v),ang=-Math.PI/2+i*2*Math.PI/n,lx=cx+Math.cos(ang)*(R+24),ly=cy+Math.sin(ang)*(R+24)+5;
+    var anc=Math.abs(Math.cos(ang))<.2?"middle":(Math.cos(ang)>0?"start":"end");
+    s+='<text x="'+lx+'" y="'+ly+'" text-anchor="'+anc+'" font-size="'+fs+'" font-weight="700" fill="var(--ink)" font-family="Noto Sans TC,sans-serif">'+a.label+'</text>';
+    s+='<circle cx="'+p[0]+'" cy="'+p[1]+'" r="5" fill="var(--accent)" stroke="var(--paper)" stroke-width="2"/>';
+    s+='<circle class="hit" data-i="'+i+'" cx="'+p[0]+'" cy="'+p[1]+'" r="16" fill="transparent" tabindex="0" aria-label="'+a.label+' '+a.v+'"/>';
+  });
+  el.innerHTML=s+'</svg><div class="tip" hidden></div>';
+  var tip=el.querySelector(".tip");
+  el.querySelectorAll(".hit").forEach(function(c){
+    function show(){var i=+c.dataset.i,a=axes[i],p=pt(i,a.v);tip.innerHTML=a.tip+'　<b>'+a.v+'</b>';tip.style.left=(p[0]/W*100)+"%";tip.style.top=(p[1]/H*100)+"%";tip.hidden=false;}
+    function hide(){tip.hidden=true;}
+    c.addEventListener("mouseenter",show);c.addEventListener("focus",show);c.addEventListener("mouseleave",hide);c.addEventListener("blur",hide);
+  });
+}
+
+function render(){
+  var t=cur.join(""),d=derive(t),st=d.stack,th=T[t];
+  applyTheme(t);
+  document.querySelectorAll("#pick .pair").forEach(function(p){var k=+p.dataset.k;
+    p.querySelectorAll("button").forEach(function(b){b.setAttribute("aria-pressed",b.dataset.v===cur[k]?"true":"false");});});
+  document.querySelectorAll(".gtile").forEach(function(b){b.setAttribute("aria-pressed",b.dataset.t===t?"true":"false");});
+  for(var i=0;i<4;i++){$("s"+i+"l").textContent=cur[i]+" 的偏好強度";$("s"+i+"v").textContent=$("s"+i).value+"%";}
+
+  $("persona").innerHTML=emblem(t,"emb")+'<div><p class="role-name">'+th.name+'</p><p class="tag">「'+th.tag+'」</p>'+
+    '<div class="codeline"><span class="code">'+t+'</span><span class="stk">'+st.map(chip).join('<span class="sep">–</span>')+'</span></div>'+
+    '<p class="why"><b>這一頁的風格：</b>'+th.why+'</p></div>';
+
+  var w=[100,80,56,34];
+  $("stack").innerHTML=st.map(function(f,i){return '<div class="row"><div class="pos"><b>'+POS[i]+'</b>'+(i+1)+'</div><div class="bar '+f[0]+'" style="width:'+w[i]+'%"><span class="c">'+f+'</span><span class="d">'+F[f].q+'</span></div></div>';}).join("");
+  $("roles").innerHTML=st.map(function(f,i){return '<div class="role '+f[0]+'"><div class="k">'+POS[i]+' '+f+' '+F[f].n+'</div><div class="v">'+ROLE[i][1]+'</div><p>'+ROLE[i][2]+'。'+F[f].does+'</p></div>';}).join("");
+
+  var ei=cur[0],jp=cur[3];
+  var s1='<b>'+jp+'</b> → '+(jp==="J"?'判斷':'感知')+'功能向外 → 字母裡的'+(jp==="J"?'判斷':'感知')+'是 '+d.ext+'（'+fam[d.ext]+'）→ <b>'+d.ext+'e</b>';
+  var s2=ei==="E"?'<b>E</b> → '+d.ext+'e 就是主導；輔助是另一個功能 '+d.other+'，方向相反 → <b>'+st[1]+'</b>'
+                 :'<b>I</b> → '+d.ext+'e 只是輔助；主導是另一個功能 '+d.other+'，而且向內 → <b>'+st[0]+'</b>';
+  $("steps").innerHTML='<li>'+s1+'</li><li>'+s2+'</li><li>第三：'+st[1]+' 的相反是 '+st[2][0]+'，方向同主導（'+st[0][1]+'）→ <b>'+st[2]+'</b></li><li>劣勢：'+st[0]+' 的相反是 '+st[3][0]+'，方向相反（'+st[3][1]+'）→ <b>'+st[3]+'</b></li>';
+
+  var key=["dom","aux","tert","inf"];
+  $("funcs").innerHTML=st.map(function(f,i){return '<div class="deep '+f[0]+'"><h3>'+chip(f)+' '+F[f].n+' <small>'+POS[i]+'・'+ROLE[i][1]+'</small></h3><p class="q">核心問題：'+F[f].q+'</p><p><strong>它在做什麼：</strong>'+F[f].does+'</p><p><strong>在你身上：</strong>'+F[f][key[i]]+'</p></div>';}).join("");
+
+  var inward=st[0][1]==="i";
+  function v(f,s){return 'var(--'+f[0].toLowerCase()+(s?'-soft':'')+')';}
+  $("loop").innerHTML='<p class="sub">壓力大時容易跳過輔助功能 '+st[1]+'，讓主導 '+st[0]+' 和第三 '+st[2]+' 卡在一起。兩個都是'+(inward?'向內':'向外')+'的功能，所以人會'+(inward?'往內縮':'往外衝')+'。</p>'+
+    '<div class="loop"><div class="node" style="background:'+v(st[0],1)+';color:'+v(st[0])+'"><span class="c">'+st[0]+'</span><br>主導</div><div class="arr">⇄</div>'+
+    '<div class="node" style="background:'+v(st[2],1)+';color:'+v(st[2])+'"><span class="c">'+st[2]+'</span><br>第三</div><div class="arr">·····</div>'+
+    '<div class="node" style="border:1.5px dashed '+v(st[1])+';color:'+v(st[1])+'"><span class="c">'+st[1]+'</span><br>被跳過</div></div>'+
+    '<div class="call warn"><p class="lbl">卡住的徵兆</p><ul>'+(inward
+      ?'<li>封閉自己，不想接觸人和新東西</li><li>在腦中反覆打轉，越想越偏</li><li>覺得別人都不懂、什麼都沒意義</li>'
+      :'<li>一直往外找刺激或事情做，停不下來</li><li>做決定很衝，沒有停下來想</li><li>很難安靜下來面對自己</li>')+'<li>'+F[st[2]].tert+'</li></ul></div>'+
+    '<div class="call"><p class="lbl">劣勢功能失控時</p><p>'+F[st[3]].inf+'</p></div>'+
+    '<p><strong>怎麼跳出來：</strong>刻意用回輔助功能 '+chip(st[1])+'，例如：'+F[st[1]].exit+'。不要再用主導功能分析「自己為什麼卡住」，那通常只會讓迴圈轉得更深。</p>';
+
+  $("grow").innerHTML='<h3>1. 練輔助 '+chip(st[1])+'</h3><p>'+F[st[1]].aux+'</p><p><strong>可以試：</strong>'+F[st[1]].grow+'</p>'+
+    '<h3>2. 認出 '+st[0]+'–'+st[2]+' 迴圈</h3><p>出現上一節的徵兆時，就是該換方式的訊號：'+F[st[1]].exit+'。</p>'+
+    '<h3>3. 慢慢跟劣勢 '+chip(st[3])+' 和解</h3><p>不用練到很強，但完全忽略它，它會在壓力下用失控的方式冒出來。</p><p><strong>可以試：</strong>'+F[st[3]].grow+'</p>';
+
+  var mine=st.slice().sort().join(),same=[],infDom=[],mirror=[],none=[];
+  ALL.forEach(function(o){if(o===t)return;var od=derive(o).stack;
+    if(od.slice().sort().join()===mine)same.push(o);
+    if(od[0]===st[3])infDom.push(o);
+    if(od[0]===flip(st[0]))mirror.push(o);
+    if(od.every(function(f){return st.indexOf(f)<0;}))none.push(o);});
+  function card(title,list,txt){return list.length?'<div class="relc"><div class="h"><b>'+title+'</b>'+list.map(function(x){return '<button type="button" class="tchip" data-t="'+x+'">'+x+' '+T[x].name+'</button>';}).join("")+'</div><p>'+txt+'</p></div>':'';}
+  $("rel").innerHTML=card("用同一組功能",same,"四個功能一樣，只是順序不同。看世界的材料相同，很容易聊得來，也容易有同樣的盲點。一起做事時要另外留意彼此都弱的那塊。")+
+    card("主導是你的劣勢 "+st[3],infDom,"他們最自然的能力剛好是你最弱的，所以最容易互相看不懂，也最能帶你成長。相處時先承認對方的出發點，再講你的看法。")+
+    card("同一功能、方向相反（"+flip(st[0])+" 主導）",mirror,"看起來很像，做法卻剛好相反（"+st[0]+" 對 "+flip(st[0])+"）。常以為對方懂自己，其實沒有，要把自己的標準講清楚。")+
+    card("四個功能完全沒重疊",none,"切入世界的方式完全不同，合作時要多花力氣翻譯，但他們能補到你所有的盲點。");
+
+  var sc=scores(d);
+  radar($("octa"),["Ti","Ne","Fe","Si","Te","Ni","Fi","Se"].map(function(f){return {label:f,v:sc[f],tip:f+' '+F[f].n};}),15);
+  var ab=ABIL.map(function(a){var x=0;a.w.forEach(function(q){x+=sc[q[0]]*q[1];});return {label:a.n,v:Math.round(x),tip:a.n,w:a.w};});
+  radar($("penta"),ab,14);
+  var all8=st.concat(d.shadow),lvl=["主導","輔助","第三","劣勢","陰影","陰影","陰影","陰影"];
+  $("ftable").innerHTML=all8.map(function(f,i){return '<tr><td>'+chip(f)+' '+F[f].n+'</td><td><span class="lvl l'+Math.min(i+1,5)+'">'+lvl[i]+'</span></td><td>'+F[f].work+'</td><td class="num">'+sc[f]+'</td><td><div class="meter"><i style="width:'+sc[f]+'%"></i></div></td></tr>';}).join("");
+  $("atable").innerHTML=ab.map(function(a){return '<tr><td><strong>'+a.label+'</strong></td><td>'+a.w.map(function(q){return chip(q[0])+' × '+q[1];}).join(' ＋ ')+'</td><td class="num">'+a.v+'</td></tr>';}).join("");
+
+  var axes=[["E","I"],["S","N"],["T","F"],["J","P"]];
+  if(usePct.checked){
+    $("prefWrap").innerHTML='<div class="pref">'+axes.map(function(ax,i){var p=+$("s"+i).value,left=cur[i]===ax[0],span=p-50;
+      var fill=left?'right:50%;width:'+span+'%':'left:50%;width:'+span+'%';
+      return '<div class="prow"><span class="a'+(left?' on':'')+'">'+ax[0]+(left?' '+p+'%':'')+'</span><div class="ptrack"><div class="fill" style="'+fill+'"></div><div class="mid"></div></div><span class="'+(left?'':'on')+'">'+(left?'':p+'% ')+ax[1]+'</span></div>';}).join("")+'</div>';
+  } else {
+    $("prefWrap").innerHTML='<p class="note">勾選上方「我有測驗的百分比結果」並填入數字，這裡會畫出四個向度的偏好強度。</p>';
+  }
+  try{history.replaceState(null,"","#"+t.toLowerCase());}catch(e){}
+}
+document.querySelectorAll("#pick .pair button").forEach(function(b){b.addEventListener("click",function(){cur[+b.parentNode.dataset.k]=b.dataset.v;render();});});
+$("rel").addEventListener("click",function(e){var b=e.target.closest(".tchip");if(b){cur=b.dataset.t.split("");render();window.scrollTo(0,0);}});
+usePct.addEventListener("change",function(){sliders.hidden=!usePct.checked;render();});
+for(var i=0;i<4;i++){$("s"+i).addEventListener("input",render);}
+window.addEventListener("hashchange",function(){var x=(location.hash||"").replace("#","").toUpperCase();if(/^[EI][SN][TF][JP]$/.test(x)&&x!==cur.join("")){cur=x.split("");render();}});
+render();
+})();
+</script>
+
+<script>
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("./sw.js").catch(function(){});});}
+</script>
+</body>
+</html>
